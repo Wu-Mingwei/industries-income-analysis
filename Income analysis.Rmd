@@ -1,0 +1,164 @@
+---
+title: "Industires Income Analysis"
+author: "Mingwei Wu"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+#Data Description
+### Number: A simple index number for each row
+### City: The location of a person (Dallas, New York City, Los Angeles, Mountain View, Boston, Washington D.C., San Diego and Austin)
+### Gender: Sex, Female or Male
+### Age: The age of person
+### Income: Annual income of person
+### Is the person Illness (Yes/No)
+
+
+#Goal
+### analysis the income between the different factors
+```{r}
+library(ggplot2)
+library(tidyverse)
+```
+```{r}
+x<-read.csv("pre.csv",header=TRUE)
+head(x)
+```
+```{r}
+x<-x[-1]
+head(x)
+```
+
+```{r}
+library(Amelia)
+missmap(x)
+```
+```{r}
+x%>%
+  ggplot(aes(x=Age,y=Income,color=Gender))+geom_point()+geom_smooth()
+```
+
+```{r}
+x%>%
+  ggplot(aes(x=Age,y=Income,color=Illness))+geom_point()+geom_smooth()
+```
+
+
+```{r}
+dim(x)
+x1<-x%>%
+  filter(Gender=="Male")
+x2<-x%>%
+  filter(Gender=="Female")
+head(x1)
+head(x2)
+```
+```{r}
+par(mfrow=c(1,2))
+hist(x1$Income,breaks = 1000,col="#BBFFDD",main="variance of male",xlab="variance",ylab="number of male")
+hist(x2$Income,breaks = 1000, col = "#BBFFDD", main="variance of female",xlab="variance",ylab="number of female")
+```
+```{r}
+ggplot(x,aes(x=Income,y=Age))+geom_point(aes(color=Illness))+ggtitle("the income with the Illness or not")
+ggplot(x,aes(x=Gender,y=Age))+geom_boxplot(aes(fill=Illness))
+```
+```{r}
+set.seed(12345)
+x3<-x[sample(1:nrow(x),500),]
+```
+
+
+
+```{r}
+library(dendextend)
+labs<-as.character(x$Gender)
+color<-function(vec){
+  uvec<-unique(vec)
+  cols=rainbow(length(uvec))
+  colvec<-cols[as.numeric(as.factor(vec))]
+  list(colvec=colvec,cols=cols,labels=uvec)
+}
+data<-scale(x3$Income)
+d<-dist(data)
+comp<-hclust(d)
+dend<-as.dendrogram(comp)
+leaves<-labs[order.dendrogram(dend)]
+labels_colors(dend,labels=TRUE)<-color(leaves)$colvec
+labels(dend)<-leaves
+plot(dend,main="Clustering using complete linkage")
+```
+
+```{r}
+ave<-hclust(d,method="average")
+dend_ave<-as.dendrogram(ave)
+labels_colors(dend_ave,labels=TRUE) <-color(leaves)$colvec
+labels(dend_ave) <- leaves
+plot(dend_ave, main="Clustering using average linkage")
+```
+```{r}
+sin<-hclust(d,method="single")
+din<-as.dendrogram(sin)
+labels_colors(din,labels=TRUE)<- color(leaves)$colvec
+labels(din)<-leaves
+plot(sin,main="Clustering using single linkage")
+```
+
+```{r}
+library(stats)
+x4<-x3%>%
+  select(Income,Age)
+x4<-as.matrix(x4)
+heatmap<-heatmap(x4, Rowv=NA, Colv=NA, col=heat.colors(256),scale="column",margins = c(10,10))
+```
+
+```{r}
+head(x3)
+```
+```{r}
+x3%>%
+ ggplot(aes(City,Income))+geom_boxplot()+coord_flip()
+```
+```{r}
+x3%>%
+  ggplot(aes(x=Gender))+geom_bar(aes(fill=City))
+```
+
+```{r}
+x3%>%
+  ggplot(aes(x=Income))+geom_bar(aes(fill=Gender))
+```
+
+```{r}
+x3%>%
+  ggplot(aes(Income,Age))+geom_point(size=0.3,alpha=0.6)+facet_wrap(~City)+geom_smooth(method="lm",se=FALSE)
+```
+```{r}
+pairs(Income~City+Age+Gender+Illness,data=x3)
+```
+
+
+```{r}
+lm<-(lm(Income~.,data=x3))
+summary(lm)
+```
+```{r}
+lm1<-lm(Income~City+Gender+Age,data=x3)
+summary(lm1)
+```
+
+```{r}
+anova(lm1,lm)
+```
+```{r}
+lm2<-lm(Income~City+Gender,data=x3)
+summary(lm2)
+```
+
+```{r}
+anova(lm2,lm)
+```
+```{r}
+par(mfrow=c(1,2))
+plot(lm1,c(1:2))
+```
